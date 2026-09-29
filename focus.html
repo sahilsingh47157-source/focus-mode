@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>FOCUSPLAY — Distraction-Free Study Player</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+
+  <!-- NAVBAR -->
+  <header class="border-b border-slate-800/80 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-4 md:px-8 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3 cursor-pointer" onclick="resetToHome()">
+      <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-600/30">
+        <i class="fa-solid fa-graduation-cap"></i>
+      </div>
+      <div>
+        <h1 class="text-sm md:text-base font-black tracking-tight leading-none text-white">FOCUSPLAY</h1>
+        <p class="text-[10px] text-indigo-400 font-semibold tracking-wider uppercase mt-0.5">Watch. Focus. Learn.</p>
+      </div>
+    </div>
+
+    <!-- Active State Pill -->
+    <div id="active-badge" class="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      FOCUS WORKSPACE ACTIVE
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Rain Ambience Toggle -->
+      <button id="btn-ambient" onclick="toggleRainAmbience()" class="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800 transition flex items-center gap-1.5">
+        <i class="fa-solid fa-cloud-rain text-indigo-400"></i>
+        <span id="ambient-text" class="hidden sm:inline">Rain Sound</span>
+      </button>
+
+      <button onclick="loadSample()" class="text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 transition">
+        Try Demo
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN BODY -->
+  <main class="flex-1 flex flex-col">
+
+    <!-- SCREEN 1: LANDING PAGE / URL INPUT -->
+    <section id="screen-home" class="flex-1 flex items-center justify-center p-4">
+      <div class="max-w-2xl w-full text-center space-y-8 py-10">
+        
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-semibold">
+          <i class="fa-solid fa-shield-halved"></i> 100% Ad-Free UI & No Recommendations
+        </div>
+
+        <div class="space-y-3">
+          <h2 class="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight">
+            Study Without The Distractions.
+          </h2>
+          <p class="text-sm md:text-base text-slate-400 max-w-lg mx-auto">
+            Paste one YouTube lecture link and enter an isolated study environment without feeds, shorts, or comments.
+          </p>
+        </div>
+
+        <!-- Input Box -->
+        <div class="bg-slate-900/90 border border-slate-800 p-2.5 md:p-3 rounded-2xl shadow-2xl space-y-3">
+          <div class="relative flex items-center">
+            <i class="fa-brands fa-youtube text-red-500 absolute left-4 text-xl"></i>
+            <input 
+              type="text" 
+              id="input-url"
+              placeholder="Paste any YouTube video or lecture link..."
+              class="w-full bg-slate-950 text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-indigo-500 text-sm transition"
+              onkeydown="if(event.key === 'Enter') startSession()"
+            />
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2">
+            <button 
+              onclick="startSession()" 
+              class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 px-6 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 text-sm">
+              <i class="fa-solid fa-play"></i> START FOCUS SESSION
+            </button>
+            <button 
+              onclick="loadSample()" 
+              class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-3.5 px-5 rounded-xl text-sm transition">
+              Load Sample Lecture
+            </button>
+          </div>
+        </div>
+
+        <!-- Error Message Container -->
+        <div id="error-msg" class="hidden p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs"></div>
+
+        <!-- Highlights -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-left pt-6">
+          <div class="p-3 bg-slate-900/40 border border-slate-800/80 rounded-xl">
+            <i class="fa-solid fa-ban text-indigo-400 text-sm mb-1 block"></i>
+            <div class="text-xs font-bold text-white">No Shorts Feed</div>
+            <div class="text-[11px] text-slate-400">Zero recommendation rabbit holes</div>
+          </div>
+          <div class="p-3 bg-slate-900/40 border border-slate-800/80 rounded-xl">
+            <i class="fa-solid fa-clock text-indigo-400 text-sm mb-1 block"></i>
+            <div class="text-xs font-bold text-white">Pomodoro Timer</div>
+            <div class="text-[11px] text-slate-400">Integrated focus sessions</div>
+          </div>
+          <div class="p-3 bg-slate-900/40 border border-slate-800/80 rounded-xl">
+            <i class="fa-solid fa-pen-nib text-indigo-400 text-sm mb-1 block"></i>
+            <div class="text-xs font-bold text-white">Smart Notes</div>
+            <div class="text-[11px] text-slate-400">Auto-saved local note board</div>
+          </div>
+          <div class="p-3 bg-slate-900/40 border border-slate-800/80 rounded-xl">
+            <i class="fa-solid fa-headphones text-indigo-400 text-sm mb-1 block"></i>
+            <div class="text-xs font-bold text-white">Audio Ambience</div>
+            <div class="text-[11px] text-slate-400">Relaxing rain soundscape</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SCREEN 2: WORKSPACE (PLAYER + TOOLS) -->
+    <section id="screen-workspace" class="hidden flex-1 p-3 md:p-6 max-w-7xl mx-auto w-full flex flex-col space-y-4">
+      
+      <!-- Top Action Bar -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-xl">
+        <div class="flex items-center gap-2">
+          <button onclick="resetToHome()" class="text-slate-400 hover:text-white text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition">
+            <i class="fa-solid fa-arrow-left mr-1"></i> Change Video
+          </button>
+          <span id="current-id-label" class="text-xs font-mono text-slate-500">ID: --</span>
+        </div>
+
+        <!-- Fallback Engine Switcher -->
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-400 hidden sm:inline">Engine:</span>
+          <button id="btn-mode-nocookie" onclick="changeEngine('nocookie')" class="px-2.5 py-1 text-xs rounded-md bg-indigo-600 text-white font-medium">Safe Mode (No-Cookie)</button>
+          <button id="btn-mode-standard" onclick="changeEngine('standard')" class="px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-300 hover:text-white font-medium">Standard</button>
+          <a id="btn-open-yt" href="#" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-300 hover:text-white inline-flex items-center gap-1">
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Open Original
+          </a>
+        </div>
+      </div>
+
+      <!-- Main Layout -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 items-start">
+        
+        <!-- LEFT: VIDEO (8 Cols) -->
+        <div class="lg:col-span-8 space-y-3">
+          <div class="relative w-full aspect-video bg-black rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
+            <div id="embed-frame-target" class="w-full h-full"></div>
+          </div>
+
+          <!-- Helper tip in case of strict creator restrictions -->
+          <div class="p-3 bg-slate-900/60 border border-slate-800 rounded-xl text-xs text-slate-400 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-circle-check text-emerald-400"></i>
+              <span>Distraction-free container active. No suggestions, ads, or comments will load.</span>
+            </div>
+            <button onclick="reloadFrame()" class="text-indigo-400 hover:underline shrink-0 ml-2">Reload Video</button>
+          </div>
+        </div>
+
+        <!-- RIGHT: PRODUCTIVITY WORKSPACE (4 Cols) -->
+        <div class="lg:col-span-4 space-y-4">
+          
+          <!-- POMODORO TIMER -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+              <div class="flex items-center gap-2 text-xs font-bold text-slate-200 uppercase tracking-wider">
+                <i class="fa-solid fa-stopwatch text-indigo-400"></i> Study Pomodoro
+              </div>
+              <span id="timer-state-pill" class="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">Ready</span>
+            </div>
+
+            <div class="text-center py-2">
+              <div id="timer-clock" class="text-4xl font-black font-mono tracking-tight text-white">25:00</div>
+              <p class="text-[11px] text-slate-400 mt-1">Deep focus interval</p>
+            </div>
+
+            <div class="grid grid-cols-4 gap-1.5">
+              <button onclick="setTimer(15)" class="py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium">15m</button>
+              <button onclick="setTimer(25)" class="py-1 text-xs rounded-lg bg-indigo-600/30 border border-indigo-500/50 text-indigo-300 font-bold">25m</button>
+              <button onclick="setTimer(45)" class="py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium">45m</button>
+              <button onclick="setTimer(60)" class="py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium">60m</button>
+            </div>
+
+            <div class="flex gap-2 pt-1">
+              <button id="btn-timer-action" onclick="togglePomodoro()" class="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-play"></i> Start Timer
+              </button>
+              <button onclick="resetPomodoro()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition">
+                <i class="fa-solid fa-rotate-left"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- LECTURE NOTES -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+              <div class="flex items-center gap-2 text-xs font-bold text-slate-200 uppercase tracking-wider">
+                <i class="fa-solid fa-pen-to-square text-indigo-400"></i> Lecture Notes
+              </div>
+              <span id="notes-count" class="text-[11px] text-slate-400">0 notes</span>
+            </div>
+
+            <div class="space-y-2">
+              <textarea 
+                id="note-textarea" 
+                rows="2" 
+                placeholder="Write key point or summary..." 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              ></textarea>
+              <button 
+                onclick="saveNote()" 
+                class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-plus text-[10px]"></i> Add Note
+              </button>
+            </div>
+
+            <div id="notes-container" class="space-y-2 max-h-52 overflow-y-auto pr-1">
+              <div class="text-center py-5 text-xs text-slate-500">No notes written yet.</div>
+            </div>
+
+            <button onclick="exportNotesFile()" class="w-full py-1.5 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white rounded-lg text-[11px] transition">
+              <i class="fa-solid fa-download mr-1"></i> Export Notes (.txt)
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    let activeVideoId = null;
+    let selectedEngine = 'nocookie'; // Best for avoiding Error 153
+    let timerClock = null;
+    let timerSeconds = 25 * 60;
+    let isTimerActive = false;
+    let storedNotes = [];
+    let audioCtx = null;
+    let rainNode = null;
+    let isRainPlaying = false;
+
+    // Load saved notes from storage on boot
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('focusplay_saved_notes');
+      if (saved) {
+        try {
+          storedNotes = JSON.parse(saved);
+          renderNotesUI();
+        } catch(e) {}
+      }
+    });
+
+    // Extract 11-character Video ID from any standard URL
+    function parseYoutubeId(input) {
+      if (!input) return null;
+      input = input.trim();
+      if (/^[a-zA-Z0-9_-]{11}$/.test(input)) return input;
+      const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/;
+      const match = input.match(regex);
+      return match ? match[1] : null;
+    }
+
+    // Launch Session
+    function startSession() {
+      const input = document.getElementById('input-url');
+      const err = document.getElementById('error-msg');
+      const vid = parseYoutubeId(input.value);
+
+      if (!vid) {
+        err.textContent = "Please enter a valid YouTube video link (e.g., https://youtu.be/...)";
+        err.classList.remove('hidden');
+        return;
+      }
+
+      err.classList.add('hidden');
+      activeVideoId = vid;
+
+      // Switch screens
+      document.getElementById('screen-home').classList.add('hidden');
+      document.getElementById('screen-workspace').classList.remove('hidden');
+      document.getElementById('active-badge').classList.remove('hidden');
+      document.getElementById('current-id-label').textContent = `ID: ${vid}`;
+      document.getElementById('btn-open-yt').href = `https://www.youtube.com/watch?v=${vid}`;
+
+      mountPlayer(vid, selectedEngine);
+    }
+
+    function loadSample() {
+      document.getElementById('input-url').value = 'https://www.youtube.com/watch?v=kqtD5dpn9C8';
+      startSession();
+    }
+
+    // Mount Iframe Player with clean parameters (No Error 153)
+    function mountPlayer(videoId, engine) {
+      const container = document.getElementById('embed-frame-target');
+      const domain = engine === 'nocookie' ? 'https://www.youtube-nocookie.com' : 'https://www.youtube.com';
+
+      // Query params that suppress ads/recommendations without breaking player policy
+      const params = new URLSearchParams({
+        autoplay: '1',
+        rel: '0',
+        modestbranding: '1',
+        playsinline: '1'
+      });
+
+      container.innerHTML = `
+        <iframe 
+          id="yt-active-frame"
+          class="w-full h-full border-0 rounded-2xl"
+          src="${domain}/embed/${videoId}?${params.toString()}"
+          title="Distraction-Free Lecture"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen>
+        </iframe>
+      `;
+    }
+
+    function changeEngine(engine) {
+      selectedEngine = engine;
+      const btnNoCookie = document.getElementById('btn-mode-nocookie');
+      const btnStandard = document.getElementById('btn-mode-standard');
+
+      if (engine === 'nocookie') {
+        btnNoCookie.className = 'px-2.5 py-1 text-xs rounded-md bg-indigo-600 text-white font-medium';
+        btnStandard.className = 'px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-300 hover:text-white font-medium';
+      } else {
+        btnStandard.className = 'px-2.5 py-1 text-xs rounded-md bg-indigo-600 text-white font-medium';
+        btnNoCookie.className = 'px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-300 hover:text-white font-medium';
+      }
+
+      if (activeVideoId) {
+        mountPlayer(activeVideoId, engine);
+      }
+    }
+
+    function reloadFrame() {
+      if (activeVideoId) {
+        mountPlayer(activeVideoId, selectedEngine);
+      }
+    }
+
+    function resetToHome() {
+      document.getElementById('screen-home').classList.remove('hidden');
+      document.getElementById('screen-workspace').classList.add('hidden');
+      document.getElementById('active-badge').classList.add('hidden');
+      document.getElementById('embed-frame-target').innerHTML = '';
+      activeVideoId = null;
+    }
+
+    // POMODORO TIMER LOGIC
+    function setTimer(minutes) {
+      if (isTimerActive) togglePomodoro();
+      timerSeconds = minutes * 60;
+      updateTimerDisplay();
+    }
+
+    function togglePomodoro() {
+      const btn = document.getElementById('btn-timer-action');
+      const pill = document.getElementById('timer-state-pill');
+
+      if (isTimerActive) {
+        clearInterval(timerClock);
+        isTimerActive = false;
+        btn.innerHTML = '<i class="fa-solid fa-play"></i> Resume Timer';
+        pill.textContent = 'Paused';
+        pill.className = 'text-[11px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20';
+      } else {
+        isTimerActive = true;
+        btn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+        pill.textContent = 'Focusing';
+        pill.className = 'text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20';
+
+        timerClock = setInterval(() => {
+          if (timerSeconds > 0) {
+            timerSeconds--;
+            updateTimerDisplay();
+          } else {
+            clearInterval(timerClock);
+            isTimerActive = false;
+            btn.innerHTML = '<i class="fa-solid fa-play"></i> Start';
+            pill.textContent = 'Done!';
+            playAlertTone();
+            alert("🎉 Session Complete! Time for a short 5-minute break.");
+          }
+        }, 1000);
+      }
+    }
+
+    function resetPomodoro() {
+      clearInterval(timerClock);
+      isTimerActive = false;
+      timerSeconds = 25 * 60;
+      updateTimerDisplay();
+      document.getElementById('btn-timer-action').innerHTML = '<i class="fa-solid fa-play"></i> Start Timer';
+      const pill = document.getElementById('timer-state-pill');
+      pill.textContent = 'Ready';
+      pill.className = 'text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20';
+    }
+
+    function updateTimerDisplay() {
+      const m = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+      const s = (timerSeconds % 60).toString().padStart(2, '0');
+      document.getElementById('timer-clock').textContent = `${m}:${s}`;
+    }
+
+    function playAlertTone() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+        osc.frequency.exponentialRampToValueAtTime(783.99, ctx.currentTime + 0.3); // G5
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.8);
+      } catch(e) {}
+    }
+
+    // NOTES LOGIC
+    function saveNote() {
+      const area = document.getElementById('note-textarea');
+      const txt = area.value.trim();
+      if (!txt) return;
+
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      storedNotes.unshift({ id: Date.now(), text: txt, time: time });
+      area.value = '';
+      localStorage.setItem('focusplay_saved_notes', JSON.stringify(storedNotes));
+      renderNotesUI();
+    }
+
+    function deleteNote(id) {
+      storedNotes = storedNotes.filter(n => n.id !== id);
+      localStorage.setItem('focusplay_saved_notes', JSON.stringify(storedNotes));
+      renderNotesUI();
+    }
+
+    function renderNotesUI() {
+      const box = document.getElementById('notes-container');
+      const count = document.getElementById('notes-count');
+      count.textContent = `${storedNotes.length} note${storedNotes.length === 1 ? '' : 's'}`;
+
+      if (storedNotes.length === 0) {
+        box.innerHTML = '<div class="text-center py-5 text-xs text-slate-500">No notes written yet.</div>';
+        return;
+      }
+
+      box.innerHTML = storedNotes.map(n => `
+        <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-1">
+          <div class="flex items-center justify-between text-[10px] text-slate-500">
+            <span><i class="fa-regular fa-clock mr-1"></i>${n.time}</span>
+            <button onclick="deleteNote(${n.id})" class="text-slate-500 hover:text-rose-400 transition">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+          <p class="text-slate-300 leading-relaxed whitespace-pre-wrap">${escapeHtml(n.text)}</p>
+        </div>
+      `).join('');
+    }
+
+    function exportNotesFile() {
+      if (storedNotes.length === 0) {
+        alert("No notes to export yet!");
+        return;
+      }
+      const data = "FOCUSPLAY LECTURE NOTES\n\n" + storedNotes.map(n => `[${n.time}]\n${n.text}\n`).join('\n---\n\n');
+      const blob = new Blob([data], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Lecture_Notes.txt`;
+      a.click();
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // PROCEDURAL RAIN AMBIENCE (Web Audio API)
+    function toggleRainAmbience() {
+      if (isRainPlaying) {
+        if (rainNode) rainNode.stop();
+        isRainPlaying = false;
+        document.getElementById('ambient-text').textContent = 'Rain Sound';
+        document.getElementById('btn-ambient').classList.remove('bg-indigo-600/30', 'border-indigo-500/50', 'text-white');
+      } else {
+        try {
+          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const bufferSize = audioCtx.sampleRate * 2;
+          const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+          const output = noiseBuffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            output[i] = Math.random() * 2 - 1;
+          }
+
+          const whiteNoise = audioCtx.createBufferSource();
+          whiteNoise.buffer = noiseBuffer;
+          whiteNoise.loop = true;
+
+          const filter = audioCtx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+
+          const gain = audioCtx.createGain();
+          gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+
+          whiteNoise.connect(filter);
+          filter.connect(gain);
+          gain.connect(audioCtx.destination);
+
+          whiteNoise.start(0);
+          rainNode = whiteNoise;
+          isRainPlaying = true;
+
+          document.getElementById('ambient-text').textContent = 'Rain: On';
+          document.getElementById('btn-ambient').classList.add('bg-indigo-600/30', 'border-indigo-500/50', 'text-white');
+        } catch(e) {}
+      }
+    }
+  </script>
+</body>
+</html>
